@@ -1,0 +1,1165 @@
+CREATE DATABASE QLCUAHANG
+GO
+
+USE QLCUAHANG
+GO 
+
+CREATE TABLE dbo.Customer(
+	c_id varchar(10) primary key,
+	c_name nvarchar(50) not null,
+	c_gender bit not null,
+	c_birth date not null,
+	c_address nvarchar(50),
+	c_phone varchar(12) not null,
+	c_point int,
+	c_status bit default 0
+)
+GO
+
+CREATE TABLE dbo.Employee(
+	e_id varchar(10) primary key,
+	e_name nvarchar(20) not null,
+	e_gender bit not null, 
+	e_birth date not null,
+	e_address nvarchar(50),
+	e_phone varchar(12) not null,
+	e_position bit not null,
+	e_hireDate date not null,
+	e_salary float not null, 
+	e_status bit default 0
+)
+GO
+
+CREATE TABLE dbo.Account(
+	a_username char(20) primary key,
+	a_password char(20) not null,
+	e_id varchar(10) CONSTRAINT fk_account_employee_eid FOREIGN KEY REFERENCES Employee(e_id),
+	a_status bit default 0
+)
+GO
+
+CREATE TABLE dbo.Bill(
+	b_id char(10) primary key,
+	b_date DATE not null, 
+	b_totalpay float not null,
+	e_id varchar(10) CONSTRAINT fk_bil_employee_eid FOREIGN KEY REFERENCES Employee(e_id),
+	c_id varchar(10) CONSTRAINT fk_bil_customer_cid FOREIGN KEY REFERENCES Customer(c_id),
+	b_status bit default 0
+)
+GO
+
+CREATE TABLE dbo.Type_Product(
+	t_id char(10) primary key,
+	t_name nvarchar(20) not null,
+	t_status bit default 0
+)
+GO
+
+
+CREATE TABLE dbo.Product(
+	p_id char(10) primary key,
+	p_idate date not null,
+	p_vdate date,
+	p_name nvarchar(20) not null,
+	p_image image not null,
+	p_price float not null,
+	p_quantity float not null,
+	t_id char(10) CONSTRAINT fk_product_type_tid FOREIGN KEY REFERENCES Type_Product(t_id),
+	p_status bit default 0
+)
+GO
+
+
+CREATE TABLE dbo.Supply(
+	s_id char(10) primary key,
+	s_name nvarchar(50) not null,
+	s_address nvarchar(20) not null,
+	s_phone varchar(12) not null,
+	p_id char(10) CONSTRAINT fk_supply_product_pid FOREIGN KEY REFERENCES Product(p_id),
+	s_status bit default 0
+)
+GO
+
+CREATE TABLE dbo.Detail(
+	d_amount float not null,
+	b_id char(10) references Bill(b_id),
+	p_id char(10) references Product(p_id),
+	primary key(b_id, p_id),
+	d_status bit default 0
+)
+GO
+
+------------------------------------------------VIEW-----------------------------------------------
+----Xem thông tin tài khoản-----------
+CREATE VIEW v_accountEmployee 
+AS
+	Select em.e_id, em.e_name, ac.a_username, ac.a_password
+	from Employee em inner join Account ac
+	on em.e_id = ac.e_id
+GO
+
+----Tổng số lượng của nhiều sản phẩm trong hóa đơn-----------
+CREATE VIEW v_amountProduct
+As
+	Select (Product.p_id) , sum( Detail.d_amount) as amount
+	from  Type_Product inner join Product on Type_Product.t_id=Product.t_id inner join Detail on Detail.p_id= Product.p_id
+	where d_status=0
+	group by Product.p_id
+Go
+
+----Hiển thị----
+CREATE VIEW v_productQuantity 
+As 
+	Select Product.p_id ,Product.p_name,t_name, amount 
+	from  Type_Product inner join Product on Type_Product.t_id=Product.t_id inner join v_amountProduct on v_amountProduct.p_id= Product.p_id	
+Go
+
+-------------------------- Thông tin chi tiết của Detail  --------------------
+Create view V_DetailInfo
+AS
+	SELECT  p_name as product, d_amount as amount, p_price*1.15 as price, d_amount*p_price*1.15 as total, b_id as bid, d_status as status
+	FROM Product inner join Detail on Product.p_id=Detail.p_id 
+go
+
+------------------------------- Thông tin chi tiết của Account  --------------------
+create view V_AccountInfo
+AS
+	SELECT  a_username as username,a_password as password, e_name as eName, e_position as role, a_status as status, Employee.e_id as eid
+	FROM Account inner join Employee on Account.e_id=Employee.e_id 
+go
+
+--------------------------------- Thông tin chi tiết của Bill  --------------------
+CREATE VIEW V_BILL 
+	As
+	Select b_id ,b_date,b_totalpay,e_name ,c_name from Bill inner join Employee  on Bill.e_id=Employee.e_id
+	inner join Customer on Bill.c_id=Customer.c_id;
+	Go
+
+---------------------PROCEDURE-------------------------------------
+----------------------Employee-------------------------------------
+-----Add------
+CREATE or ALTER PROCEDURE usp_AddEmployee
+	@id varchar(10),
+	@name nvarchar(20),
+	@gender bit,
+	@birth date,
+	@address nvarchar(50),
+	@phone varchar(12),
+	@position bit,
+	@hireDate date,
+	@salary float
+AS
+BEGIN
+	if (DATEDIFF(year, @birth, GETDATE()) < 18)
+	begin
+		Raiserror(N'KNhân viên phải từ 18 tuổi trở lên', 16, 1)
+		return
+	end
+	else
+	begin
+		Begin Try
+			Begin Tran insert_Empl
+			INSERT INTO dbo.Employee VALUES(@id,@name, @gender, @birth, @address, @phone, @position, @hireDate, @salary, default)
+			Commit Tran insert_Empl
+		End try
+		Begin catch
+			rollback tran insert_Empl
+				declare @mess varchar(max)
+				set @mess=ERROR_MESSAGE()
+				Raiserror(@mess, 16, 1)
+		end catch
+	end
+END
+GO
+
+
+-----Delete-----
+CREATE OR ALTER PROC usp_DeleteEmployee
+	@id varchar(10)
+AS
+BEGIN
+	Begin try
+		Begin Tran delete_Empl
+		Update Employee
+		set e_status = 1
+		where e_id = @id
+		Commit Tran delete_Empl
+	End try
+	Begin catch
+		print N'Không xóa được'
+		print ERROR_MESSAGE()
+		Rollback Tran delete_Empl
+	End catch
+END
+GO
+
+
+
+------Find-----
+CREATE PROC usp_FindEmloyee
+	@sql_findName nvarchar(MAX)
+	--@table_name sysname
+As
+Begin Try
+Select e_id As [ID],e_name As[Name],e_gender As [Gender],e_birth As [Birthday],e_address As [Address],e_phone As [Phone],
+e_position As [Position],e_hireDate As [HireDate],e_salary As [Salary] from Employee where Concat(e_name,e_position)  LIKE '%'+@sql_findName+'%' and e_status = 0
+End Try
+Begin Catch 
+	print N'Có lỗi. Đảm bảo thông tin có tồn tại'
+End Catch;
+Go
+
+
+
+-----Update-----
+CREATE or alter PROC usp_UpdateEmployee
+@id varchar(10),
+@name nvarchar(20),
+@gender bit,
+@birth date,
+@address nvarchar(30),
+@phone varchar(12),
+@position bit, 
+@hireDate date, 
+@salary float
+AS
+BEGIN
+	if (DATEDIFF(year, @birth, GETDATE()) < 18)
+	begin
+		Raiserror(N'KNhân viên phải từ 18 tuổi trở lên', 16, 1)
+		return
+	end
+	else
+		Begin
+			Begin try
+				Begin Tran update_Empl
+				UPDATE Employee
+				SET e_name = @name, e_gender = @gender, e_birth = @birth, e_address = @address, e_phone = @phone, e_position = @position, e_hireDate = @hireDate, e_salary = @salary
+				WHERE e_id = @id
+				Commit Tran update_Empl
+			End try
+			Begin catch
+				rollback tran update_Empl
+				declare @mess varchar(max)
+				set @mess=ERROR_MESSAGE()
+				Raiserror(@mess, 16, 1)
+			End catch
+		End
+END
+GO
+
+
+--------------------------------------------Customer-----------------------------------------------
+-----Add-------
+create or alter PROCEDURE usp_AddCustomer
+	@id varchar(10),
+	@name nvarchar(50),
+	@gender bit,
+	@birth date,
+	@address nvarchar(50),
+	@phone varchar(12),
+	@point int
+AS
+BEGIN
+	if (DATEDIFF(year, @birth, GETDATE()) < 16)
+	begin
+		Raiserror(N'Khách hàng phải từ 16 tuổi trở lên', 16, 1)
+		return
+	end
+	else
+	begin
+		begin try
+			Begin Tran insert_Cus
+			INSERT INTO [dbo].[Customer] VALUES(@id, @name, @gender, @birth, @address, @phone, @point, default)
+			Commit Tran insert_Cus
+		end try
+		begin catch
+			rollback tran insert_Cus
+			declare @mess varchar(max)
+			set @mess=ERROR_MESSAGE()
+			Raiserror(@mess, 16, 1)
+		end catch
+	end
+END
+GO
+
+------Update--------
+CREATE OR ALTER PROC usp_UpdateCustomer
+@id varchar(10),
+@name nvarchar(50),
+@gender bit, 
+@birth date, 
+@address nvarchar(50),
+@phone varchar(12),
+@point int
+AS
+BEGIN
+	if (DATEDIFF(year, @birth, GETDATE()) < 16)
+	begin
+		Raiserror(N'Khách hàng phải từ 16 tuổi trở lên', 16, 1)
+		return
+	end
+	else
+	begin
+			Begin Try
+				Begin Tran update_Cus
+				UPDATE Customer 
+				SET c_name = @name, c_gender =@gender, c_birth = @birth, c_address = @address, c_phone = @phone, c_point = @point
+				WHERE c_id = @id
+				Commit Tran update_Cus
+			End Try
+			Begin Catch
+				rollback tran update_Cus
+				declare @mess varchar(max)
+				set @mess=ERROR_MESSAGE()
+				Raiserror(@mess, 16, 1)
+			End Catch
+	END
+END
+GO
+
+
+-----Delete-------
+CREATE PROC usp_DeleteCustomer
+	@id varchar(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran delete_Cus
+		Update Customer set c_status = 1 where c_id = @id
+		Commit Tran delete_Cus
+	End Try
+	Begin Catch
+		Print N'Không xóa được'
+		Rollback Tran delete_Cus
+	End Catch
+END
+GO
+
+
+----Find-----
+CREATE PROC usp_FindCustomer
+	@sql_findName nvarchar(MAX)
+	--@table_name sysname
+As
+Begin Try
+Select c_id As [ID],c_name As[Name],c_gender As [Gender],c_birth As [Birthday],c_address As [Address],c_phone As [Phone],
+c_point As [Point] from Customer where Concat(c_name,c_id)  LIKE '%'+@sql_findName+'%' and c_status = 0
+End Try
+Begin Catch 
+	print N'Không tìm thấy thông tin'
+End Catch;
+Go
+
+
+--------------------------------Bill-------------------------------
+
+CREATE PROCEDURE usp_AddBill
+	@b_id char(10),
+	@date DATE, 
+	@totalpay float,
+	@e_id varchar(10),
+	@c_id varchar(10)
+AS
+BEGIN
+	BEGIN TRY
+		Begin Tran insert_Bill
+		INSERT INTO dbo.Bill VALUES(@b_id, @date, @totalpay, @e_id, @c_id, default)
+		Commit Tran insert_Bill
+	END TRY
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm Bill'
+		print error_message()
+		Rollback Tran insert_Bill
+	END CATCH
+END
+GO
+
+CREATE PROC usp_FindBill
+	@sql_findBill nvarchar(MAX)
+	--@table_name sysname
+As
+Begin Try
+	Select b_id,b_date,b_totalpay, Bill.e_id, Bill.c_id from Bill inner join Employee  on Bill.e_id=Employee.e_id inner join Customer on Bill.c_id=Customer.c_id
+	where Concat(b_id,b_date,e_name,c_name, Bill.e_id, Bill.c_id)  LIKE '%'+@sql_findBill+'%' and b_status=0
+	End Try
+	Begin Catch 
+		print N'Gặp lỗi trong quá trình tìm Bill'
+		print error_message()
+End Catch;
+Go
+
+--View V_Detail
+CREATE VIEW V_Detail 
+	As 
+	Select d_amount ,Bill.b_id , Product.p_id 
+	from Detail inner join Bill on Detail.b_id=Bill.b_id inner join Product on Detail.p_id= Product.p_id
+Go
+
+--View V_Bill
+CREATE VIEW V_BILLINFO
+	As
+	Select b_id ,b_date,b_totalpay,e_name ,c_name from Bill inner join Employee  on Bill.e_id=Employee.e_id
+	inner join Customer on Bill.c_id=Customer.c_id;
+	Go
+
+
+
+
+CREATE PROC usp_DeleteBill
+	@id nchar(10)
+AS
+BEGIN
+	Begin Try 
+		Begin Tran delete_Bill
+		Update bill set b_status = 1 where b_id = @id
+		Commit Tran delete_Bill
+	End Try
+	Begin Catch
+		Print N'Không thể xóa'
+		Rollback Tran delete_Bill
+	End Catch	
+END
+GO
+
+------------------------Type_Product---------------------
+CREATE PROCEDURE usp_AddType
+	@id char(10),
+	@name nvarchar(20)
+AS
+BEGIN
+	BEGIN TRY
+		Begin Tran insert_Type
+		INSERT INTO dbo.Type_Product VALUES(@id, @name, default)
+		Commit Tran insert_Type
+	END TRY
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm loại sản phẩm'
+		Rollback Tran insert_Type
+	END CATCH
+	
+END
+GO
+
+CREATE PROC usp_DeleteTypeProduct
+	@id nchar(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran delete_Type
+		Update Type_Product set t_status = 1 WHERE Type_Product.t_id = @id
+		Commit Tran delete_Type
+	End Try
+	Begin Catch
+		Print N'Không thêm được sản phẩm'
+		Rollback Tran delete_Type
+	End Catch
+END
+GO
+
+CREATE PROC usp_UpdateTypeProduct
+@id char(10),
+@name nvarchar(20)
+AS
+BEGIN
+	Begin Try
+		Begin Tran update_Type
+		UPDATE Type_Product
+		SET t_name = @name
+		WHERE t_id = @id
+		Commit Tran update_Type
+	End Try
+	Begin Catch
+		Print N'Không cập nhật được sản phẩm'
+		Rollback Tran update_Type
+	End Catch
+END
+GO
+
+
+CREATE PROC usp_FindTypeProduct
+	@sql_findTypeProduct nvarchar(MAX)
+	--@table_name sysname
+As
+Begin Try
+	Select t_id As [ID],t_name As [Name] from Type_Product
+	where Concat(t_id,t_name)  LIKE '%'+@sql_findTypeProduct+'%' and t_status = 0
+	End Try
+	Begin Catch 
+		print 'There was an error. Check to make sure object exists.'
+		print error_message()
+	End Catch;
+Go
+
+
+----------------------------Product-----------------------
+CREATE PROCEDURE usp_AddProduct
+	@p_id char(10),
+	@idate date,
+	@vdate date,
+	@name nvarchar(20),
+	@image image,
+	@price float,
+	@quantity float,
+	@t_id char(10)
+AS
+BEGIN
+	BEGIN TRY
+		Begin Tran insert_Pro
+		INSERT INTO dbo.Product VALUES(@p_id, @idate, @vdate, @name, @image, @price, @quantity, @t_id, default)
+		Commit Tran insert_Pro
+	END TRY
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm sản phẩm'
+		Rollback Tran insert_Pro
+	END CATCH
+END
+GO
+
+
+CREATE PROC usp_UpdateProduct
+@id char(10),
+@idate date,
+@vdate date, 
+@name nvarchar(20),
+@image image,
+@price float,
+@quantity float, 
+@t_id char(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran update_Pro
+		UPDATE Product 
+		SET p_idate = @idate, p_vdate = @vdate, p_name = @name, p_image = @image, p_price = @price, p_quantity = @quantity, t_id = @t_id
+		WHERE p_id = @id
+		Commit Tran update_Pro
+	End Try
+	Begin Catch
+		Print N'Không thể update sản phẩm'
+		Rollback Tran update_Pro
+	End Catch
+END
+GO
+
+
+CREATE PROC usp_DeleteProduct
+	@id nchar(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran delete_Proc
+		Update Product Set p_status = 1 WHERE Product.p_id = @id
+		Commit Tran delete_Proc
+	End Try
+	Begin Catch
+		Print N'Không thể xóa' 
+		Rollback Tran delete_Proc
+	End Catch
+END
+GO
+
+alter PROC usp_FindProduct
+	@sql_findName nvarchar(MAX)
+	--@table_name sysname
+As
+Begin Try
+	Select p_id As [Mã sản phẩm],p_idate As[Ngày nhập],p_vdate As [Ngày hết hạn],p_name As [Tên sản phẩm],p_image As [Ảnh],p_price As [Price],
+	p_quantity As [Quantity], t_id As [Mã loại] from Product where Concat(p_id,p_name, t_id)  LIKE '%'+@sql_findName+'%' and p_status = 0
+	End Try
+	Begin Catch 
+		print 'There was an error. Check to make sure object exists.'
+		print error_message()
+End Catch;
+Go
+
+-----------------------------------Supply----------------------------------
+CREATE PROCEDURE usp_AddSupply
+	@s_id char(10),
+	@name nvarchar(20),
+	@address nvarchar(20),
+	@phone nchar(11),
+	@p_id char(10)
+AS
+BEGIN
+	BEGIN TRY
+		Begin Tran insert_Supply
+		INSERT INTO dbo.Supply VALUES(@s_id, @name, @address, @phone, @p_id, default)
+		Commit Tran insert_Supply
+	END TRY
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm nhà cung cấp'
+		Rollback Tran insert_Supply
+	END CATCH
+END
+GO
+
+
+CREATE PROC usp_DeleteSupply
+	@id nchar(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran delete_Supply
+		Update Supply Set s_status = 1  WHERE Supply.s_id = @id
+		Commit Tran delete_Supply
+	End Try 
+	Begin Catch
+		Print N'Không thể xóa nhà cung cấp'
+		Rollback Tran delete_Supply
+	End Catch	
+END
+GO
+
+CREATE PROC usp_FindSupply
+	@sql_findSupply nvarchar(MAX)
+	--@table_name sysname
+As
+Begin
+	Begin Try
+	Select s_id As [ID],s_name As [Name],s_address As [Address],s_phone As [Phone] from Supply where Concat(s_id,s_name)  LIKE '%'+@sql_findSupply+'%' and s_status = 0
+	End Try
+	Begin Catch 
+		print 'There was an error. Check to make sure object exists.'
+		print error_message()
+	End Catch;
+End
+Go
+
+CREATE OR ALTER PROC usp_UpdateSupply 
+@sid char(10),
+@name nvarchar(30),
+@address nvarchar(20),
+@phone nvarchar(11),
+@pid char(10)
+AS
+BEGIN
+	Begin Try
+		Begin Tran update_Supply
+		UPDATE Supply
+		SET s_name = @name, s_address = @address, s_phone = @phone, p_id = @pid
+		WHERE s_id = @sid
+		Commit Tran update_Supply
+	End Try
+	Begin Catch 
+		Print N'Không thể cập nhật thông tin'
+		Rollback Tran update_Supply
+	End Catch
+END
+GO
+
+
+------------------------Detail
+CREATE PROCEDURE usp_AddDetail
+	@amount float,
+	@bid char(10),
+	@pid char(10)
+AS
+BEGIN
+	BEGIN TRY
+		Begin Tran insert_Detail
+			If not Exists( Select * From Detail Where b_id=@bid and p_id=@pid) -- Nếu chưa tồn tại detail đó
+			begin
+				Insert into Detail values(@amount, @bid, @pid, default)
+			end
+			else
+			begin
+				if Exists (Select * From Detail Where b_id=@bid and p_id=@pid and d_status=0)
+				begin
+					Update Detail set d_amount=d_amount+@amount Where b_id=@bid and p_id=@pid
+				end
+				else
+				begin
+					if Exists (Select * From Detail Where b_id=@bid and p_id=@pid and d_status=1)
+					begin
+						Update Detail set d_amount=@amount, d_status=0 Where b_id=@bid and p_id=@pid
+					end
+				end
+			end
+		Commit Tran insert_Detail
+	END TRY
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm chi tiết hóa đơn'
+		Rollback Tran insert_Detail
+	END CATCH
+END
+GO
+
+
+CREATE PROC usp_FindDetail
+@sql_find nvarchar(MAX)
+--@table_name sysname
+As
+Begin
+	Begin Try
+	Select d_amount As [Amount],b_id As [ID_Bill], p_id As [ID_Product] from V_Detail where Concat(b_id,p_id)  LIKE '%'+@sql_find+'%'
+	End Try
+	Begin Catch 
+		print 'There was an error. Check to make sure object exists.'
+		print error_message()
+	End Catch;
+End
+Go
+
+----------------------------------Account------------------------------
+CREATE OR ALTER PROCEDURE usp_AddAccount
+	@username char(20),
+	@password char(20),
+	@id nchar(10)
+AS
+BEGIN
+	if exists (select * from Account where e_id=@id and a_status=0)
+	begin
+		Raiserror(N'Nhân viên đã có tài khoản',16,1)
+		return
+	end
+	else
+	begin
+	BEGIN TRY
+		Begin Tran insert_Ac
+		INSERT INTO dbo.Account VALUES(@username, @password, @id, default)
+		Commit Tran insert_Ac
+	end	try
+	BEGIN CATCH
+		print N'Gặp lỗi trong quá trình thêm tài khoản'
+		Rollback Tran insert_Ac
+	END CATCH
+	END
+end
+GO
+
+
+CREATE PROC usp_FindAccount
+	@sql_findName nvarchar(MAX)
+	--@table_name sysname
+	As
+	Begin
+		Begin Try
+			Select * from V_AccountInfo where Concat(username,eid, eName)  LIKE '%'+@sql_findName+'%' and status = 0
+		End Try
+		Begin Catch 
+			print 'There was an error. Check to make sure object exists.'
+			print error_message()
+		End Catch;
+End
+Go
+
+CREATE or alter PROC usp_DeleteAccount
+	@user char(20)
+AS
+BEGIN
+	IF @user is null
+		PRINT ('Không tìm thấy user name của tài khoản cần xóa')
+	ELSE
+		BEGIN TRY
+		BEGIN TRAN tran_delete_account
+		UPDATE Account SET a_status = 1 WHERE (a_username = @user and a_status=0)
+		COMMIT TRAN tran_delete_account
+		END TRY
+		BEGIN CATCH
+			PRINT N'Không xóa được Tài khoản'
+			ROLLBACK TRAN
+		END CATCH
+END
+GO
+
+
+--------------------------------------------FUNCTION-------------------------------------------------
+---------------Kiểm tra đăng nhập--------------
+CREATE FUNCTION uf_CheckLogin (@username char(20), @password char(20))
+RETURNS INT
+AS
+BEGIN
+	DECLARE @result int
+	SELECT @result=Count(*) FROM Account Where a_username=@username AND a_password = @password
+	RETURN @result		
+END
+GO
+
+--------------Function trả về table gồm username, password, eid vả role---------------------
+CREATE FUNCTION uf_PermissionRole(@username char(20), @password char(20))
+RETURNS TABLE
+AS
+RETURN Select a_username, a_password, e_name, ac.e_id, e_position from Account as ac inner join Employee as em on ac.e_id = em.e_id Where a_username = @username and a_password = @password
+GO
+
+------ Tính tổng số khách hàng---------------
+CREATE FUNCTION uf_SumCustomer()
+RETURNS INT
+AS
+BEGIN
+	DECLARE @SL INT
+	SELECT @SL=COUNT(c_id) FROM Customer 
+	RETURN @SL
+END
+GO
+
+---- Tổng số nhân viên------------------------
+CREATE FUNCTION uf_SumEmployee()
+RETURNS INT
+AS
+BEGIN
+	DECLARE @SL INT
+	SELECT @SL=COUNT(e_id) FROM Employee 
+	RETURN @SL
+END
+GO
+
+----Tổng tiền phải trả---------------------------
+CREATE FUNCTION uf_TotalPay(@b_id NVARCHAR(10))
+RETURNS FLOAT
+AS
+BEGIN
+	DECLARE @totalpay FLOAT
+	SELECT @totalpay=b_totalpay FROM V_BILLINFO WHERE @b_id=b_id
+	RETURN @totalpay
+END
+GO
+
+--------------------------------------------------TRIGGER-----------------------------------------
+---Thêm sản phẩm vào bill, tự động cập nhật sản phẩm trong kho---------
+CREATE TRIGGER trg_completeBill
+ON Detail
+AFTER INSERT
+AS BEGIN
+	Declare @pid char(10)
+	Declare @damount float
+
+	Select @pid = p_id, @damount = d_amount 
+	from inserted
+
+	Update Product
+	Set p_quantity = p_quantity - @damount
+	Where p_id = @pid
+END
+GO
+
+------------Tính tổng thanh toán hóa đơn----------------
+Create TRIGGER [dbo].[UpdateSumTotalPrice] ON [dbo].[Detail] AFTER INSERT
+AS
+BEGIN
+	DECLARE @billPay float, @bid varchar(10), @detailPay float, @amount float, @price float, @pid varchar(10)
+	select @amount = d_amount from inserted
+	select @pid = p_id from inserted
+	select @price = p_price*1.15 from Product where p_id=@pid
+	select @bid= b_id from inserted
+	select @detailPay = @price * @amount
+	select @billPay=b_totalpay From Bill Where Bill.b_id = @bid
+	UPDATE Bill SET b_totalpay= @billPay + @detailPay Where Bill.b_id=@bid
+END
+GO
+
+-----------Cập nhật tổng thanh toán hóa đơn------------------
+Create TRIGGER [dbo].[DecreaseSumTotalPrice] ON [dbo].[Detail] AFTER UPDATE
+AS
+BEGIN
+	DECLARE @billPay float, @bid varchar(10), @pid varchar(10), @detailPay float, @statusBefore bit, @statusAfter bit, @amount float, @price float
+	select @bid=b_id FROM inserted
+	select @pid = p_id from inserted
+	select @statusBefore=d_status from deleted
+	select @statusAfter=d_status from inserted
+	select @price = p_price*1.15 from Product where p_id=@pid
+	if @statusBefore=1
+	begin
+		if @statusAfter=0 -- Thêm lại món hàng đã xóa
+		begin
+			select @amount = d_amount from inserted
+			select @billPay = b_totalpay from Bill where Bill.b_id=@bid
+			select @detailPay=@price * @amount
+			update Bill SET b_totalpay= @billPay + @detailPay Where Bill.b_id=@bid
+		end
+	end
+	else -- if @statusBefore = 0
+	begin
+		if @statusAfter=0 -- Từ 0 -> 0: Cập nhật món hàng
+		begin
+			select @amount = inserted.d_amount - deleted.d_amount from inserted, deleted 
+			select @billPay = b_totalpay from Bill where Bill.b_id=@bid
+			select @detailPay=@price * @amount
+			update Bill SET b_totalpay= @billPay + @detailPay Where Bill.b_id=@bid
+		end
+		else -- Từ 0 -> 1: Xóa món hàng
+		begin
+			select @amount = d_amount from inserted
+			select @billPay=b_totalpay from Bill where Bill.b_id=@bid
+			select @detailPay=@price * @amount
+			update Bill SET b_totalpay= @billPay - @detailPay Where Bill.b_id=@bid
+		end
+	end
+end
+GO
+----------------------------------------------------------------------------------------
+-- Chi tiết Hóa đơn
+CREATE FUNCTION uf_DetailBill (@id NCHAR(10))
+RETURNS  Table
+AS
+	RETURN
+		SELECT 
+				p.p_name as "Tên sản phẩm", 
+				p.p_price as "Giá", 
+				t1.d_amount as "Số lượng", 
+				d_amount * p_price as Tổng --Tổng tiền của một sản phẩm
+		FROM Product as p inner join (
+		SELECT Detail.b_id, p_id, b_date, b_totalpay, d_amount
+		FROM Bill inner join Detail on Bill.b_id = Detail.b_id Where Bill.b_id = @id )as t1 
+		on p.p_id = t1.p_id
+GO
+
+--Chuyển đổi từ tổng tiền thanh toán sang điểm
+CREATE FUNCTION uf_ConvertPoint(@total float)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @point INT
+	SET @point = @total / 10000
+	RETURN @point
+END
+GO
+
+--View Điểm của từng Khách hàng và Bill
+CREATE VIEW v_PointCustomer
+AS
+	SELECT c.c_id, c.c_point, b.b_id, b.b_totalpay
+	FROM Customer c INNER JOIN Bill b
+	ON c.c_id = b.c_id
+GO
+
+-- Trigger tích điểm sau khi Mua một hóa đơn
+create or alter TRIGGER trg_AddPoint
+ON Bill
+AFTER Update
+AS
+	DECLARE @before float, @after float, @cid nchar(10), @status bit
+	SELECT @after = ne.b_totalpay, @cid = ne.c_id, @status=ne.b_status
+	FROM inserted ne
+	select @before = de.b_totalpay from deleted de
+BEGIN
+	if(@status=1)
+	begin
+		Update Customer
+		SET c_point = c_point - dbo.uf_convertPoint(@after)
+		From Customer
+		Where Customer.c_id = @cid
+		PRINT(N'Đã hoàn lại điểm')
+	end
+	else
+	begin
+		Update Customer
+		SET c_point = c_point + dbo.uf_convertPoint(@after-@before)
+		From Customer
+		Where Customer.c_id = @cid
+		PRINT('Tích điểm thành công')
+	end
+END
+GO
+
+
+--Trigger xóa một tài khoản của một nhân viên khi nhân viên đó bị xóa
+CREATE TRIGGER trg_DeleteAccount
+ON Employee
+AFTER Update
+AS
+	DECLARE @eid varchar(10)
+	SELECT @eid = ne.e_id
+	FROM inserted ne
+BEGIN
+	EXEC usp_DeleteAccountByID @eid
+END
+GO
+
+
+-- Function Tự tạo ID có tham số truyền vào lần lượt là ID cuối cùng trong table, mẫu ID (vd: 'kh', 'nv'), độ dài ID
+CREATE FUNCTION uf_AutoGenerateIDByParamenters (@lastID varchar(10), @prefix varchar(MAX), @size int)
+RETURNS varchar(10)
+AS
+BEGIN
+	DECLARE @nextID varchar(10)
+	IF(@lastID = '' or @lastID IS NULL)
+		SET @lastID = @prefix + REPLICATE(0, @size - LEN(@prefix))	--kh000
+	DECLARE @num_nextID int
+	SET @lastID = TRIM(@lastID) --lastID = kh000
+	SET @num_nextID = REPLACE(@lastID, @prefix, '') --num = 000
+	SET @num_nextID += 1 --num = 001
+	DECLARE @new_size int --Kích thước của dãy số, ví dụ kh001, thì new_size = 3
+	SET @new_size = @size - LEN(@prefix) --new_size = 3
+	SET @nextID = @prefix + RIGHT((REPLICATE(0, @new_size) + CONVERT(VARCHAR(MAX), @num_nextID)), @new_size)
+
+	RETURN @nextID
+END
+GO
+
+-- Function Tự tạo ID với tham số truyền vào là tên Bảng cần tạo (VD: Customer, Employee)
+CREATE FUNCTION uf_AutoGenerateID (@name varchar(MAX))
+RETURNS varchar(10)
+BEGIN
+	DECLARE @lastID varchar(10), @prefix varchar(MAX),  @num int, @nextID varchar(10)
+
+	SET @lastID =
+	CASE @name
+		WHEN 'Customer' THEN (SELECT TOP 1 Customer.c_id FROM Customer ORDER BY Customer.c_id DESC)
+		WHEN 'Employee' THEN (SELECT TOP 1 Employee.e_id FROM Employee ORDER BY Employee.e_id DESC)
+		WHEN 'Bill'	THEN (SELECT TOP 1 Bill.b_id FROM Bill ORDER BY Bill.b_id DESC)
+		WHEN 'Product' THEN (SELECT TOP 1 Product.p_id FROM Product ORDER BY Product.p_id DESC)
+		WHEN 'Supply' THEN (SELECT TOP 1 Supply.s_id FROM Supply ORDER BY Supply.s_id DESC)
+		WHEN 'Type'	THEN (SELECT TOP 1 Type_Product.t_id FROM Type_Product ORDER BY Type_Product.t_id DESC)
+	END;
+
+	SET @prefix =
+	CASE @name
+		WHEN 'Customer' THEN 'kh'
+		WHEN 'Employee' THEN 'nv'
+		WHEN 'Bill'	THEN 'b'
+		WHEN 'Product' THEN 'p'
+		WHEN 'Supply' THEN 's'
+		WHEN 'Type'	THEN 't'
+	END;
+
+	SET @num = 3 + LEN(TRIM(@prefix))
+
+	SET @nextID = dbo.uf_AutoGenerateIDByParamenters(@lastID, @prefix, @num)
+
+
+	RETURN @nextID
+END
+GO
+
+CREATE OR ALTER FUNCTION uf_CountProductSale(@id char(10), @month int, @year int)
+RETURNS FLOAT
+AS
+BEGIN
+	DECLARE @count float
+	Select @count = Sum(d_amount)  from Detail as dt inner join Bill as b on dt.b_id = b.b_id where dt.p_id = @id and MONTH(b.b_date) = @month and YEAR(b.b_date) = @year Group By p_id 
+	Return @count
+END
+GO
+
+--------------trg_DeleteBill------------------------------
+Create or Alter trigger trg_DeleteDetailBill
+On Detail 
+After Update
+AS
+Begin
+	
+	if update (d_status)
+	Begin
+		Declare @d_amount int,@b_id nchar(10),@p_id char(10), @d_status bit, @b_status bit, @temp int, @count int,@MaxRNum INT
+		Select @b_id=b_id,@d_status=d_status From inserted
+		Declare @TempTable TABLE (p_id Char(10),d_amount INT,RNum INT) ;
+		INSERT INTO @TempTable
+		Select p_id,d_amount,ROW_NUMBER()OVER(ORDER BY p_id) AS RNum
+		From inserted
+		Select @count = min(RNum) , @MaxRNum = max(RNum) 
+		From @TempTable
+		If( @d_status=1)
+		Begin
+			While(@count IS NOT NULL AND @count <= @MaxRNum)
+			Begin
+				Select @p_id=p_id,@d_amount=d_amount
+				From @TempTable where RNum = @count
+				Update Product
+				Set p_quantity+=@d_amount where p_id=@p_id
+				Set @count  = @count  + 1
+			End
+		End
+	End
+End
+GO
+--------------------------------------------------
+Create or Alter trigger trg_DeleteBill
+On Bill
+After Update
+As
+Begin
+	if update (b_status)
+	Begin
+	declare @b_id nchar(10),@b_status bit, @p_id char(10),@d_amount int;
+	
+	Select @b_id=b_id,@b_status=b_status  From inserted;
+	If (@b_status=1)
+	Begin
+	Update d
+	Set d.d_status=1 From Detail d inner join Bill b on d.b_id=b.b_id 
+	Where d.b_id=@b_id;
+	
+	End
+	
+	End
+end
+Go
+
+CREATE PROC usp_DeleteAccount
+	@user char(20)
+AS
+BEGIN
+	IF @user is null
+		PRINT ('Không tìm thấy user name của tài khoản cần xóa')
+	ELSE
+		BEGIN TRY
+		BEGIN TRAN tran_delete_account
+		UPDATE Account SET a_status = 1 WHERE a_username = @user
+		COMMIT TRAN tran_delete_account
+		END TRY
+		BEGIN CATCH
+			PRINT N'Không xóa được Tài khoản'
+			ROLLBACK TRAN
+		END CATCH
+END
+GO
+
+CREATE or ALTER PROC usp_DeleteAccountByID
+	@id varchar(10)
+AS
+BEGIN
+	IF @id is null
+		PRINT ('Không tìm thấy id của nhân viên cần xóa')
+	ELSE
+		Begin
+			DECLARE @username char(20)
+			SET @username = (select a_username from v_accountEmployee where e_id=@id)
+			EXEC usp_DeleteAccount @username
+		End
+END
+
+CREATE or ALTER TRIGGER trg_DeleteAccount
+ON Employee
+AFTER Update
+AS
+	DECLARE @eid varchar(10), @status bit
+	SELECT @eid = ne.e_id, @status = ne.e_status
+	FROM inserted ne
+	IF(@status = 1)
+	BEGIN
+		EXEC usp_DeleteAccountByID @eid
+	END
+GO
+
+-- Hậu
+CREATE or ALTER VIEW v_BillOfCustomer
+AS
+	SElECT c.c_id AS N'Customer ID', c.c_name AS N'Tên Khách hàng', b.sl AS N'Số lượng Bill', c.c_status AS N'Tình trạng khách hàng'
+	FROM Customer c inner join
+	(SELECT c.c_id, Count(b.b_id) AS 'sl'
+	FROM Customer c inner join Bill b ON c.c_id = b.c_id
+	WHERE b.b_status = 0
+	GROUP BY c.c_id) AS b on c.c_id = b.c_id
+GO
+
+CREATE OR ALTER PROC usp_UpdateAccount
+	@password char(20),
+	@id nchar(10)
+AS
+BEGIN
+	IF @id is null
+		PRINT ('Không tìm thấy id')
+	ELSE
+		BEGIN TRY
+		BEGIN TRAN tran_delete_account
+		UPDATE Account SET a_password = @password WHERE e_id = @id AND a_status = 0
+		COMMIT TRAN tran_delete_account
+		END TRY
+		BEGIN CATCH
+			PRINT N'Không xóa được Tài khoản'
+			ROLLBACK TRAN
+		END CATCH
+END
+GO
