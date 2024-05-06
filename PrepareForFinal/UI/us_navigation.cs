@@ -31,5 +31,9 @@ namespace PrepareForFinal.UI
             btn_showProductUI.BackColor = Color.FromArgb(242, 222, 186);
         }
 
+        private void lb_username_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

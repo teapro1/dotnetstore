@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static PrepareForFinal.BSLayer.Statistic;
 
 namespace PrepareForFinal.UI
 {
@@ -26,7 +27,7 @@ namespace PrepareForFinal.UI
         {
             dbStatis.getProduct(cbNameProduct);
             
-            
+
         }
 
 
@@ -50,7 +51,7 @@ namespace PrepareForFinal.UI
                 dgv_statistic.DataSource = dtStatis;
                 // Tùy chỉnh giao diện cho cái list
                 dgv_statistic.AllowUserToAddRows = false;
-                dgv_statistic.Columns[0].HeaderText = "Số lượng mua";
+                dgv_statistic.Columns[0].HeaderText = "Số Lượng Mua";
             }
             catch (Exception ex)
             {
@@ -70,12 +71,54 @@ namespace PrepareForFinal.UI
                 ds = dbStatis.getBillOfCustomer();
                 dtStatis = ds.Tables[0];
                 dgv_statistic.DataSource = dtStatis;
+                dgv_statistic.Columns[3].Visible = false;
 
             }
             catch(Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
+        }
+
+        private void dgv_statistic_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void txt_year_TextChanged(object sender, EventArgs e)
+        {
+          
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btn_TotalSales_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Lấy tổng số tiền bán được và tổng số hóa đơn từ CSDL
+                SalesSummary salesSummary = dbStatis.GetTotalSales();
+
+                // Tạo DataTable chứa kết quả tổng số tiền bán được và tổng số hóa đơn
+                DataTable dtSummary = new DataTable();
+                dtSummary.Columns.Add("Tổng Tiền Bán Được");
+                dtSummary.Columns.Add("Tổng Số Hoá Đơn");
+                dtSummary.Rows.Add(salesSummary.TotalSales, salesSummary.TotalBills);
+
+                // Hiển thị kết quả trên DataGridView
+                dgv_statistic.DataSource = dtSummary;
+
+                // Tùy chỉnh giao diện cho DataGridView
+                dgv_statistic.AllowUserToAddRows = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+
         }
     }
 }

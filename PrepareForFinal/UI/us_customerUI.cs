@@ -51,7 +51,7 @@ namespace PrepareForFinal.UI
 
                 //Đưa dữ liệu lên DataGridView từ DataTable
                 dtgv_customerList.DataSource = dtCustomer;
-                dtgv_customerList.AutoResizeColumnHeadersHeight();
+                //dtgv_customerList.AutoResizeColumnHeadersHeight();
 
                 setDataGridView();
             }
@@ -83,7 +83,7 @@ namespace PrepareForFinal.UI
                 //Set Header Text cho dtgv
                 dtgv_customerList.Columns[0].HeaderText = "ID";
                 dtgv_customerList.Columns[1].HeaderText = "Tên";
-                dtgv_customerList.Columns[2].HeaderText = "Nam";
+                dtgv_customerList.Columns[2].HeaderText = "Giới Tính";
                 dtgv_customerList.Columns[3].HeaderText = "Sinh nhật";
                 dtgv_customerList.Columns[4].HeaderText = "Địa chỉ";
                 dtgv_customerList.Columns[5].HeaderText = "Phone";
@@ -92,7 +92,7 @@ namespace PrepareForFinal.UI
                 //Ẩn các cột: sinh nhật, địa chỉ, trang thái.
                 for (int i = 0; i < dtgv_customerList.ColumnCount; i++)
                 {
-                    if (i == 3 || i == 4 || i == 7)
+                    if (i == 3 || i == 2 || i == 7)
                         dtgv_customerList.Columns[i].Visible = false;
                 }
 
@@ -337,6 +337,16 @@ namespace PrepareForFinal.UI
                     return;
                 }
             }
+        }
+
+        private void dtgv_customerList_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void btn_customerInfo_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

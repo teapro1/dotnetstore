@@ -26,7 +26,7 @@ namespace PrepareForFinal.UI
         {
            btn_typeCancel.Enabled = false;
            btn_typeSave.Enabled = false;
-
+           this.FormBorderStyle = FormBorderStyle.None;
             loadData();
         }
         void loadData()
@@ -234,6 +234,16 @@ namespace PrepareForFinal.UI
 
             //Cho phép xóa Loại sản phẩm
             btn_typeDelete.Enabled = true;
+        }
+
+        private void gb_typeInfo_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lb_typeID_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

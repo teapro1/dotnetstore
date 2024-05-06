@@ -64,5 +64,15 @@ namespace PrepareForFinal.UI
             txt_username.ResetText();
             txt_password.ResetText();
         }
+
+        private void lb_header_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lb_username_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

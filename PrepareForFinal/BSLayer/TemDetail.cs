@@ -12,12 +12,12 @@ namespace PrepareForFinal.BSLayer
         public float price;
         public string pname;
         public float total;
-
+        
         public TemDetail()
         {
 
         }
-
+       
         public TemDetail(float amount, float price, string pname, float total)
         {
             this.amount = amount;

@@ -175,7 +175,7 @@ namespace PrepareForFinal.UI
 
         private void us_paymentUI_Load(object sender, EventArgs e)
         {
-
+            
         }
 
         private void btn_showStatistic_Click(object sender, EventArgs e)
@@ -186,6 +186,11 @@ namespace PrepareForFinal.UI
             this.btn_showStatistic.BackColor = background2;
             us_staticUI.Visible = true;
             us_staticUI.BringToFront();
+        }
+
+        private void lb_header_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

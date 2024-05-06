@@ -10,12 +10,12 @@ namespace PrepareForFinal.DBLayer
 {
     public class MyData
     {
-        string strConnectionString = @"Data Source=TEA\SQLEXPRESS;" +
+        string strConnectionString = @"Data Source=TEA\TEA;" +
             "Initial Catalog=QLCUAHANG;" +
             "Integrated Security=True;" + "MultipleActiveResultsets = true";
 
         SqlConnection conn = null; //Đối tượng kết nối 
-        SqlCommand comm = null; //Đối tượng truy vấn và cập nhật vào SQL Serverwd
+        SqlCommand comm = null; //Đối tượng truy vấn và cập nhật vào SQL Server
         SqlDataAdapter da = null; //Đối tượng đưa dữ liệu vào DataTable
 
         public SqlConnection getSqlConn //Lấy chuỗi kết nối

@@ -35,10 +35,16 @@ namespace PrepareForFinal.UI
         bool addFlag;
         private void btn_typeShowList_Click(object sender, EventArgs e)
         {
-            this.typeListForm=new frm_typeList();
-            this.typeListForm.Show();
+            try
+            {
+                this.typeListForm = new frm_typeList();
+                this.typeListForm.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi mở form: " + ex.Message);
+            }
         }
-
         public void setRole()
         {
             if (isRole == true)
@@ -383,6 +389,11 @@ namespace PrepareForFinal.UI
             btn_pupdate.Enabled = true;
             txt_pid.Enabled = false;
             txt_productImport.ResetText();
+        }
+
+        private void dgv_product_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

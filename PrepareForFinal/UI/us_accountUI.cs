@@ -76,7 +76,7 @@ namespace PrepareForFinal.UI
                     }
                     else
                     {
-                        MessageBox.Show("Thêm tài khoản KHÔNG thành công");
+                        MessageBox.Show("Thêm tài khoản không thành công");
                     }
                 }
                 catch (Exception ex)
@@ -153,7 +153,7 @@ namespace PrepareForFinal.UI
             dtgv_accountList.AllowUserToAddRows = false;
             dtgv_accountList.Columns[0].HeaderText = "Username";
             dtgv_accountList.Columns[1].HeaderText = "Password";
-            dtgv_accountList.Columns[2].HeaderText = "Nhân viên";
+            dtgv_accountList.Columns[2].HeaderText = "Nhân Viên";
             dtgv_accountList.Columns[3].Visible = false;
             dtgv_accountList.Columns[4].Visible = false;
             dtgv_accountList.Columns[5].Visible = false;
@@ -283,6 +283,16 @@ namespace PrepareForFinal.UI
         private void btn_reload_Click(object sender, EventArgs e)
         {
             LoadData();
+        }
+
+        private void dtgv_accountList_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void btn_customerInfo_Click_1(object sender, EventArgs e)
+        {
+
         }
     }
 }

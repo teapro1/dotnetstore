@@ -266,6 +266,16 @@ namespace PrepareForFinal.UI
             dbSupply.displayNameProduct(this.cb_nameProduct, this.txt_supplyID.Text);
         }
 
+        private void btn_supplyInfo_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void dtgv_supplyList_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
         //public void DisplayNameProduct(ComboBox cb_product)
         //{
 

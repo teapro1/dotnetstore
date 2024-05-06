@@ -8,9 +8,23 @@ using System.Data.SqlClient;
 using System.Data;
 using System.Windows.Forms;
 using System.ComponentModel;
+using System.Security.Cryptography;
 
 namespace PrepareForFinal.BSLayer
 {
+    public class PaymentType
+    {
+        
+        
+
+        public static List<string> PaymentTypeNames = new List<string> { "Tiền Mặt", "Chuyển Khoản", "Quẹt Thẻ" };
+
+        // Hàm này trả về ID của loại thanh toán dựa trên tên
+        public static int GetPaymentTypeID(string paymentTypeName)
+        {
+            return PaymentTypeNames.IndexOf(paymentTypeName);
+        }
+    }
     public class Bill
     {
         public MyData db = null;
@@ -20,7 +34,8 @@ namespace PrepareForFinal.BSLayer
         {
             db = new MyData();
         }
-
+        
+       
         public DataSet GetData()
         {
             DataSet ds = new DataSet();
@@ -28,7 +43,8 @@ namespace PrepareForFinal.BSLayer
             return ds;
         }
 
-        // Tìm tên nhân viên theo mã nhân viên
+      
+
         public String getEName(string eid)
         {
             try
@@ -191,17 +207,18 @@ namespace PrepareForFinal.BSLayer
             return cid;
         }
 
-        public bool addBill(string bid, DateTime bdate, float totalPay, String eid, String cid)
+        public bool addBill(string bid, DateTime bdate, float totalPay, String eid, String cid, String paymentType)
         {
             db = new MyData();
-            cm = new SqlCommand("EXEC usp_AddBill @bid, @bdate, @totalPay, @eid, @cid", db.getSqlConn);
+            cm = new SqlCommand("EXEC usp_AddBill @bid, @bdate, @totalPay, @eid, @cid, @paymentType", db.getSqlConn);
             cm.Parameters.AddWithValue("@bid", bid);
             cm.Parameters.AddWithValue("@bdate", bdate);
             cm.Parameters.AddWithValue("@totalPay", totalPay);
             cm.Parameters.AddWithValue("@eid", eid);
             cm.Parameters.AddWithValue("@cid", cid);
+            cm.Parameters.AddWithValue("@paymentType", paymentType); // Thêm tham số loại thanh toán
             db.openConnectionManager();
-            if ((cm.ExecuteNonQuery() >= 1))
+            if (cm.ExecuteNonQuery() >= 1)
             {
                 db.closeConnectionManager();
                 return true;

@@ -68,11 +68,11 @@ namespace PrepareForFinal.UI
                     var cell = dgv_Employee.Rows[i].Cells[6];
                     /*if (Boolean.Parse(cell.Value))
                     {
-                        dgv_Employee.Rows[i].Cells[6].Value= "Quản lý";
+                        dgv_Employee.Rows[i].Cells[6].Value= "Quản Lý";
                     }
                     else
                     {
-                        dgv_Employee.Rows[i].Cells[6].Value = "Nhân viên";
+                        dgv_Employee.Rows[i].Cells[6].Value = "Nhân Viên";
                     */
                     
                 }
@@ -265,7 +265,7 @@ namespace PrepareForFinal.UI
 
             if ((bool)(dgv_Employee.Rows[r].Cells[6].Value))
             {
-                this.cb_employeeRole.Text = "Quản Lí";
+                this.cb_employeeRole.Text = "Quản Lý";
             }
             else
             {
@@ -340,6 +340,46 @@ namespace PrepareForFinal.UI
             if (txt_findEmployee.Enabled==true)
                 btn_findEmployee.Enabled = true;
             btn_employeeCancel.Enabled = true;
+        }
+
+        private void dgv_Employee_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            //Dòng hiện hành
+            int r = dgv_Employee.CurrentCell.RowIndex;
+
+            // Chuyển thông tin lên panel 
+            this.txt_employeeID.Text = dgv_Employee.Rows[r].Cells[0].Value.ToString();
+            this.txt_employeeName.Text = dgv_Employee.Rows[r].Cells[1].Value.ToString();
+
+            if ((bool)(dgv_Employee.Rows[r].Cells[2].Value))
+            {
+                this.rb_employeeMale.Checked = true;
+            }
+            else
+            {
+                this.rb_employeeFemale.Checked = true;
+            }
+            this.txt_employeePhone.Text = dgv_Employee.Rows[r].Cells[5].Value.ToString();
+            this.txt_employeeAddress.Text = dgv_Employee.Rows[r].Cells[4].Value.ToString();
+
+            this.dtp_employeeBirthdate.Value = Convert.ToDateTime(dgv_Employee.Rows[r].Cells[3].Value.ToString());
+            this.dtp_employeeHireDate.Value = Convert.ToDateTime(dgv_Employee.Rows[r].Cells[7].Value.ToString());
+
+            if ((bool)(dgv_Employee.Rows[r].Cells[6].Value))
+            {
+                this.cb_employeeRole.Text = "Quản Lý";
+            }
+            else
+            {
+                this.cb_employeeRole.Text = "Nhân Viên";
+            }
+
+            this.num_employeeSalary.Value = Int32.Parse(dgv_Employee.Rows[r].Cells[8].Value.ToString());
+        }
+
+        private void cb_employeeRole_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

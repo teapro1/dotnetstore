@@ -20,6 +20,46 @@ namespace PrepareForFinal.BSLayer
         {
             db = new MyData();
         }
+        public struct SalesSummary
+        {
+            public decimal TotalSales;
+            public int TotalBills;
+        }
+
+        public SalesSummary GetTotalSales()
+        {
+            SalesSummary salesSummary = new SalesSummary();
+            MyData db = new MyData();
+
+            // Mở kết nối đến cơ sở dữ liệu
+            db.openConnectionManager();
+
+            // Chuỗi truy vấn SQL để lấy tổng số tiền từ bảng giao dịch và tổng số hóa đơn
+            string queryTotalSales = "SELECT SUM(b_totalpay) FROM Bill";
+            string queryTotalBills = "SELECT COUNT(b_id) FROM Bill";
+
+            // Tạo đối tượng SqlCommand để thực thi truy vấn
+            using (SqlCommand commandTotalSales = new SqlCommand(queryTotalSales, db.getSqlConn))
+            using (SqlCommand commandTotalBills = new SqlCommand(queryTotalBills, db.getSqlConn))
+            {
+                // Thực thi truy vấn và lấy kết quả
+                object resultTotalSales = commandTotalSales.ExecuteScalar();
+                object resultTotalBills = commandTotalBills.ExecuteScalar();
+
+                // Kiểm tra xem kết quả có null không và gán cho salesSummary
+                if (resultTotalSales != null && resultTotalSales != DBNull.Value)
+                {
+                    salesSummary.TotalSales = Convert.ToDecimal(resultTotalSales);
+                }
+
+                if (resultTotalBills != null && resultTotalBills != DBNull.Value)
+                {
+                    salesSummary.TotalBills = Convert.ToInt32(resultTotalBills);
+                }
+            }
+
+            return salesSummary;
+        }
 
 
         public void getProduct(ComboBox cb_product)
