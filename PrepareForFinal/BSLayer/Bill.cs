@@ -98,11 +98,9 @@ namespace PrepareForFinal.BSLayer
             {
                 cm = new SqlCommand("usp_FindBill", db.getSqlConn);
                 cm.Parameters.AddWithValue("@sql_findBill", findString);
-
                 cm.CommandType = CommandType.StoredProcedure;
-                SqlDataAdapter da = new SqlDataAdapter(); //Tạo một cầu nối giữa SQl command và Database
-                da.SelectCommand = cm;
-                da.Fill(ds); //Đưa dữ liệu vừa gọi được vào DataSet
+                SqlDataAdapter da = new SqlDataAdapter(cm);
+                da.Fill(ds);
             }
             catch (Exception ex)
             {

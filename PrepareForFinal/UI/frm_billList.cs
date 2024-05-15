@@ -24,14 +24,14 @@ namespace PrepareForFinal.UI
     {
         Bill myBill;
         DataSet myBillDataSet;
-        System.Data.DataTable myDataTable; 
+        System.Data.DataTable myDataTable;
         Detail myDetail;
         // Khai báo đối tượng Application của Microsoft Word
-        Microsoft.Office.Interop.Word.Application wordApp; 
+        Microsoft.Office.Interop.Word.Application wordApp;
         public frm_billList()
         {
             InitializeComponent();
-            
+
         }
 
         private void UnenableInputControl()
@@ -65,15 +65,21 @@ namespace PrepareForFinal.UI
         private void CustomeBillDataGridView()
         {
             dtgv_billList.AllowUserToAddRows = false;
-            dtgv_billList.Columns[0].HeaderText = "Mã HĐ";
-            dtgv_billList.Columns[1].HeaderText = "Ngày Lập";
-            dtgv_billList.Columns[2].HeaderText = "Tồng Tiền";
-            dtgv_billList.Columns[3].HeaderText = "Mã NV";
-            dtgv_billList.Columns[4].HeaderText = "Mã KH";
-            dtgv_billList.Columns[6].HeaderText = "Hình Thức Thanh Toán ";
-            dtgv_billList.Columns[2].DefaultCellStyle.Format = "n0"; // Hiển thị VNĐ, 0 số thập phân
-
+            if (dtgv_billList.Columns.Count > 0)
+            {
+                dtgv_billList.Columns[0].HeaderText = "Mã HĐ";
+                dtgv_billList.Columns[1].HeaderText = "Ngày Lập";
+                dtgv_billList.Columns[2].HeaderText = "Tổng Tiền";
+                dtgv_billList.Columns[3].HeaderText = "Mã NV";
+                dtgv_billList.Columns[4].HeaderText = "Mã KH";
+                if (dtgv_billList.Columns.Count > 6)
+                {
+                    dtgv_billList.Columns[6].HeaderText = "Hình Thức Thanh Toán";
+                }
+                dtgv_billList.Columns[2].DefaultCellStyle.Format = "n0"; // Hiển thị VNĐ, 0 số thập phân
+            }
         }
+
 
         private void CustomeDetailDataGridView()
         {
@@ -120,42 +126,28 @@ namespace PrepareForFinal.UI
             UnenableInputControl();
             LoadData();
         }
-
-
         private void dtgv_billList_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-
-            btn_billDelete.Enabled = false;
-            // Lấy dòng đang được click
             if (dtgv_billList.Rows.Count < 1)
             {
                 return;
             }
-            int row = dtgv_billList.CurrentCell.RowIndex;
-
+            if (e.RowIndex < 0 || e.RowIndex >= dtgv_billList.Rows.Count)
+            {
+                return;
+            }
             btn_billDelete.Enabled = true;
-
-
-
-            // Thiết lập định dạng cho cột ngày tháng trong DataGridView
-
-
-
-
+            int row = e.RowIndex;
             txt_billID.Text = dtgv_billList.Rows[row].Cells[0].Value.ToString();
             dtp_billDate.Value = Convert.ToDateTime(dtgv_billList.Rows[row].Cells[1].Value.ToString());
             txt_billTotalPay.Text = Math.Round((double)Double.Parse(dtgv_billList.Rows[row].Cells[2].Value.ToString())).ToString("n0") + " VNĐ"; // Hiển thị VNĐ, 0 số thập phân
             txt_billEName.Text = GetEName(dtgv_billList.Rows[row].Cells[3].Value.ToString());
             txt_billCName.Text = GetCName(dtgv_billList.Rows[row].Cells[4].Value.ToString());
-
-
             // Hiển thị thông tin chi tiết hóa đơn  
             myDetail = new Detail();
             dtgv_billDetailList.DataSource = myDetail.GetData(txt_billID.Text.ToString()).Tables[0];
             CustomeDetailDataGridView();
-
         }
-
         private String GetEName(String eid)
         {
             String name = myBill.getEName(eid);
@@ -245,12 +237,12 @@ namespace PrepareForFinal.UI
             txt_billProductPrice.Text = Math.Round((double)Double.Parse(dtgv_billDetailList.Rows[row].Cells[2].Value.ToString())).ToString("n0") + " VNĐ";
             txt_billTotalPrice.Text = Math.Round((double)Double.Parse(dtgv_billDetailList.Rows[row].Cells[3].Value.ToString())).ToString("n0") + " VNĐ";
 
-
             // Hiển thị thông tin chi tiết hóa đơn
             myDetail = new Detail();
             dtgv_billDetailList.DataSource = myDetail.GetData(txt_billID.Text.ToString()).Tables[0];
             CustomeDetailDataGridView();
         }
+
 
         private void lb_header_Click(object sender, EventArgs e)
         {
@@ -505,8 +497,50 @@ namespace PrepareForFinal.UI
             // Đóng ứng dụng Word khi form đóng
             wordApp.Quit();
         }
-    }
 
+        private void btnSearch_Click(object sender, EventArgs e)
+        {
+            string searchTerm = txtSearch.Text.Trim();
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                try
+                {
+                    myDataTable = new System.Data.DataTable();
+                    myDataTable.Clear();
+                    myBillDataSet = new DataSet();
+
+                    // Lấy data đưa vào dataset
+                    myBillDataSet = myBill.findBill(searchTerm);
+                    // Đưa dữ liệu từ dataset vào table
+                    myDataTable = myBillDataSet.Tables[0];
+
+                    // Kiểm tra dữ liệu trước khi đổ vào DataGridView
+                    if (myDataTable != null && myDataTable.Rows.Count > 0)
+                    {
+                        // Đổ data vào datagridview
+                        dtgv_billList.DataSource = myDataTable;
+
+                        // Tùy chỉnh giao diện của datagridview
+                        CustomeBillDataGridView();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Không tìm thấy hóa đơn nào.", "Thông báo");
+                    }
+
+                    txtSearch.Clear();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Không hiển thị được thông tin, Lỗi: " + ex.Message, "Lỗi");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Vui lòng nhập mã đơn hoặc tên khách hàng để tìm kiếm.", "Thông báo");
+            }
+        }
+    }
 }
 
 
